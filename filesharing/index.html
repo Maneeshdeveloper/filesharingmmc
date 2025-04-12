@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Documents Sharing Platform</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      padding: 40px 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    h2 {
+      font-weight: 600;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    form, .viewer {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+      margin-bottom: 30px;
+      transition: all 0.3s ease;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 14px;
+      margin: 12px 0;
+      border-radius: 12px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+
+    input {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    input::placeholder {
+      color: #ccc;
+    }
+
+    button {
+      background: #00c6ff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #0072ff;
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+
+    .progress-bar {
+      height: 20px;
+      background: #333;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress {
+      height: 100%;
+      background: #00ff99;
+      width: 0%;
+      color: #000;
+      text-align: center;
+      line-height: 20px;
+      transition: width 0.4s ease-in-out;
+    }
+
+    .result {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    #uploadSuccessMsg, #viewerAccessMsg {
+      font-size: 18px;
+      margin-top: 10px;
+      color: #00ffcc;
+      text-align: center;
+    }
+
+    canvas#bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<h2>Upload Documents to share</h2>
+<form id="uploadForm">
+  <input type="text" name="fileName" placeholder="File Name" required><br>
+  <input type="text" name="password" placeholder="Password" required><br>
+  <input type="text" name="accessKey" placeholder="Access Key" required><br>
+  <input type="file" name="fileUpload" id="fileInput" required><br>
+  <button type="submit" id="uploadBtn">Upload File</button>
+  <div class="progress-bar"><div class="progress" id="progressBar">0%</div></div>
+</form>
+<div class="result" id="uploadMsg"></div>
+<div id="uploadSuccessMsg"></div>
+
+<h2>Access the shared files</h2>
+<div class="viewer">
+  <input type="text" id="userAccessKey" placeholder="Enter Access Key"><br>
+  <input type="password" id="userPassword" placeholder="Enter Password"><br>
+  <button onclick="fetchFile()">View File</button>
+  <div class="result" id="viewerResult"></div>
+</div>
+<div id="viewerAccessMsg"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.157.0/three.min.js"></script>
+<script>
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg'), alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const starGeo = new THREE.BufferGeometry();
+  const starCount = 1000;
+  const positions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount * 3; i++) {
+    positions[i] = (Math.random() - 0.5) * 1000;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const starMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+  const stars = new THREE.Points(starGeo, starMaterial);
+  scene.add(stars);
+
+  camera.position.z = 1;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    stars.rotation.x += 0.0005;
+    stars.rotation.y += 0.0005;
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+
+<script>
+  const scriptWebAppURL = "https://script.google.com/macros/s/AKfycbwEO-nykhRUu-Kcp5BcVNJE1LhSgnVGDOayF-mdQAQfyY5EG1AilLM8V2LwYXoBo_Fj/exec";
+  const sheetCSVURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQqY_G6mv1F-8VAZt6oD14RoLslRcAgIzf8uDlDKbRJRjvHkusEzRgxe7BpeztHmKF-6AXHf8vUbYE6/pub?gid=0&single=true&output=csv";
+
+  document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const uploadBtn = document.getElementById("uploadBtn");
+    const progressBar = document.getElementById("progressBar");
+    const msg = document.getElementById("uploadMsg");
+    const successMsg = document.getElementById("uploadSuccessMsg");
+    const form = e.target;
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return alert("Please select a file.");
+
+    const fileName = form.fileName.value.trim();
+    const password = form.password.value.trim();
+    const accessKey = form.accessKey.value.trim();
+
+    uploadBtn.disabled = true;
+    msg.innerText = "Checking for duplicate access key...";
+    successMsg.innerText = "";
+
+    const res = await fetch(sheetCSVURL);
+    const csv = await res.text();
+    const rows = csv.split("\n").map(r => r.split(","));
+    const headers = rows[0];
+
+    const keyIndex = headers.findIndex(h => h.toLowerCase().includes("access"));
+    const duplicateAccessKey = rows.find((r, i) => i > 0 && r[keyIndex] === accessKey);
+
+    if (duplicateAccessKey) {
+      let suggestedKey;
+      do {
+        suggestedKey = "key" + Math.floor(Math.random() * 10000);
+      } while (rows.find((r, i) => i > 0 && r[keyIndex] === suggestedKey));
+
+      msg.innerHTML = `<div style="font-size: 20px; font-weight: bold; color: #ff7777; line-height: 1.6;">❌ This Access Key is already used.<br>🔑 Suggested Key: <span style="color: #00ffcc;">${suggestedKey}</span></div>`;
+      uploadBtn.disabled = false;
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadstart = () => {
+      progressBar.style.width = "0%";
+      progressBar.innerText = "0%";
+    };
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.floor((event.loaded / event.total) * 100);
+        progressBar.style.width = percent + "%";
+        progressBar.innerText = percent + "%";
+      }
+    };
+    reader.onloadend = async () => {
+      progressBar.style.width = "100%";
+      progressBar.innerText = "100%";
+      const base64 = reader.result.split(',')[1];
+      const formData = new URLSearchParams();
+      formData.append("fileName", fileName);
+      formData.append("password", password);
+      formData.append("accessKey", accessKey);
+      formData.append("file", base64);
+      formData.append("mimeType", file.type);
+
+      msg.innerText = "Uploading...";
+      const uploadRes = await fetch(scriptWebAppURL, {
+        method: "POST",
+        body: formData
+      });
+
+      const uploadText = await uploadRes.text();
+      msg.innerText = "";
+      if (uploadText.includes("http")) {
+        const link = uploadText.match(/https?:\/\/[^\s]+/)[0];
+        successMsg.innerHTML = `✅ <strong style="font-size: 20px;">Uploaded!</strong> <a href="${link}" target="_blank" style="color: #00ffff; text-decoration: underline; font-size: 18px;">Open File</a>`;
+      } else {
+        msg.innerText = `❌ Upload failed: ${uploadText}`;
+      }
+      form.reset();
+      uploadBtn.disabled = false;
+      progressBar.style.width = "0%";
+      progressBar.innerText = "0%";
+    };
+  });
+
+  async function fetchFile() {
+    const accessKey = document.getElementById("userAccessKey").value.trim();
+    const password = document.getElementById("userPassword").value.trim();
+    const viewerResult = document.getElementById("viewerResult");
+    const accessMsg = document.getElementById("viewerAccessMsg");
+    viewerResult.innerHTML = "Checking...";
+    accessMsg.innerHTML = "";
+
+    try {
+      const res = await fetch(sheetCSVURL);
+      const data = await res.text();
+      const rows = data.split("\n").map(row => row.split(","));
+      const headers = rows[0];
+
+      const akIndex = headers.findIndex(h => h.toLowerCase().includes("access"));
+      const pwIndex = headers.findIndex(h => h.toLowerCase().includes("password"));
+      const fileIndex = headers.findIndex(h => h.toLowerCase().includes("link"));
+
+      const match = rows.find((row, i) => i > 0 && row[akIndex] === accessKey && row[pwIndex] === password);
+
+      if (match) {
+        const fileLink = match[fileIndex];
+        viewerResult.innerHTML = "";
+        accessMsg.innerHTML = `✅ <strong style="font-size: 20px;">Access Granted!</strong> <a href="${fileLink}" target="_blank" style="color: #00ffff; text-decoration: underline; font-size: 18px;">Download File</a>`;
+      } else {
+        viewerResult.innerHTML = "❌ Invalid access key or password.";
+      }
+    } catch (err) {
+      viewerResult.innerHTML = "❌ Error fetching file.";
+    }
+  }
+</script>
+</body>
+</html>
