@@ -1,5 +1,5 @@
 # filesharingmmc
-Share ourfiles with multiple systems with accesskey and password
+Share Yourfiles with multiple systems with accesskey and password
 ---
 
 📁 Documents Sharing Platform
