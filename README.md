@@ -1,8 +1,5 @@
 # filesharingmmc
 Share ourfiles with multiple systems with accesskey and password
-
-Sure! Here's a clean `README.md` file you can paste into your GitHub repository for this **Documents Sharing Platform** project:
-
 ---
 
 📁 Documents Sharing Platform
